@@ -1,0 +1,57 @@
+name: Build CHIP-8 Windows x64
+
+on:
+  push:
+    branches:
+      - smooth-rendering
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Release
+        shell: pwsh
+        run: |
+          msbuild CHIP8.sln /m /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $dist = "dist"
+          New-Item -ItemType Directory -Force $dist | Out-Null
+          Copy-Item "bin\x64\Release\CHIP8.Emulator.exe" "$dist\CHIP8.Emulator.exe" -Force
+          Copy-Item "roms" "$dist\roms" -Recurse -Force
+          Copy-Item "README.md" "$dist\README.md" -Force
+
+          @"
+          CHIP-8 Smooth Render
+          Windows x64 Release
+
+          Run CHIP8.Emulator.exe.
+          ROMs are in the roms folder.
+
+          Controls:
+          1 2 3 4
+          Q W E R
+          A S D F
+          Z X C V
+
+          P = pause
+          F1 = reset
+          Ctrl+O = open ROM
+          Esc = exit
+          "@ | Set-Content "$dist\START_HERE.txt" -Encoding UTF8
+
+          Compress-Archive -Path "$dist\*" -DestinationPath "CHIP8-Smooth-Windows-x64.zip" -Force
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: CHIP8-Smooth-Windows-x64
+          path: CHIP8-Smooth-Windows-x64.zip
+          if-no-files-found: error
