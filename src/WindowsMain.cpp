@@ -53,6 +53,8 @@ std::filesystem::path g_rom_directory;
 
 class BackBuffer {
 public:
+    BackBuffer() = default;
+
     ~BackBuffer() {
         destroy();
     }
