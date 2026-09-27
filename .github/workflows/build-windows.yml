@@ -2,8 +2,6 @@ name: Build CHIP-8 Windows x64
 
 on:
   push:
-    branches:
-      - smooth-rendering
   workflow_dispatch:
 
 jobs:
@@ -17,7 +15,7 @@ jobs:
       - name: Build Release
         shell: pwsh
         run: |
-          msbuild CHIP8.sln /m /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143
+          msbuild CHIP8.sln /m /p:Configuration=Release /p:Platform=x64
 
       - name: Package
         shell: pwsh
