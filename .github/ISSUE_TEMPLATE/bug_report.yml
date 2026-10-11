@@ -1,0 +1,66 @@
+name: Bug / Ошибка
+description: Report a reproducible problem / Сообщить о воспроизводимой ошибке
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "English or Russian is welcome. Include the game and settings. / Можно писать по-русски или по-английски. Укажите игру и настройки."
+  - type: input
+    id: version
+    attributes:
+      label: Application version / Версия приложения
+      placeholder: "2.1.0"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Windows version / Версия Windows
+      placeholder: "Windows 11 x64"
+    validations:
+      required: true
+  - type: input
+    id: rom
+    attributes:
+      label: ROM name or legal source link / Название или легальный источник ROM
+      description: "Do not attach games you cannot redistribute. / Не прикладывайте игры, которые нельзя распространять."
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Compatibility profile / Профиль
+      options:
+        - Modern
+        - CHIP-8 (VIP)
+        - Super-CHIP Modern
+        - XO-CHIP
+        - Unknown / Не знаю
+    validations:
+      required: true
+  - type: input
+    id: speed
+    attributes:
+      label: CPU instructions per second / Инструкций в секунду
+      placeholder: "700"
+  - type: dropdown
+    id: display
+    attributes:
+      label: Display mode / Режим экрана
+      options:
+        - XOR stabilization / Стабилизация XOR
+        - Exact display / Точный экран
+        - Unknown / Не знаю
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps and actual result / Действия и результат
+      description: "Include errors, a screenshot or short video. / Добавьте ошибки, снимок или короткое видео."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / Ожидаемое поведение
+    validations:
+      required: true

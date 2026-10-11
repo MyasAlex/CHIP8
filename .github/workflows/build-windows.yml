@@ -1,58 +1,99 @@
-name: Build CHIP-8 Windows x64
+name: Build, verify and release
 
 on:
   push:
+    branches: [master]
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: chip8-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  build:
-    runs-on: windows-2025
-
+  linux:
+    name: Linux core and ROM verification
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Build Release
-        shell: pwsh
-        run: |
-          msbuild CHIP8.sln /m /p:Configuration=Release /p:Platform=x64
-
-      - name: Package
-        shell: pwsh
-        run: |
-          $dist = "dist"
-          New-Item -ItemType Directory -Force $dist | Out-Null
-          Copy-Item "bin\x64\Release\CHIP8.Emulator.exe" "$dist\CHIP8.Emulator.exe" -Force
-          Copy-Item "roms" "$dist\roms" -Recurse -Force
-          Copy-Item "README.md" "$dist\README.md" -Force
-
-          @"
-          CHIP-8 Smooth Render
-          Windows x64 Release
-
-          Run CHIP8.Emulator.exe.
-          ROMs are in the roms folder.
-
-          Controls:
-          1 2 3 4
-          Q W E R
-          A S D F
-          Z X C V
-
-          P = pause
-          F1 = reset
-          Ctrl+O = open ROM
-          Esc = exit
-          "@ | Set-Content "$dist\START_HERE.txt" -Encoding UTF8
-
-          Compress-Archive -Path "$dist\*" -DestinationPath "CHIP8-Smooth-Windows-x64.zip" -Force
-
-      - name: Upload build
-        uses: actions/upload-artifact@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Core and offline Timendus checks
+        run: ctest --test-dir build --output-on-failure
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
         with:
-          name: CHIP8-Smooth-Windows-x64
-          path: CHIP8-Smooth-Windows-x64.zip
+          name: Linux-verification
+          path: |
+            build/Testing/Temporary/LastTest.log
+            build/rom-results/verification.json
+          if-no-files-found: warn
+
+  windows:
+    name: Windows build, native smoke check and package
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Configure x64 with static runtime
+        run: cmake -S . -B build -A x64
+      - name: Build Release
+        run: cmake --build build --config Release --parallel
+      - name: Core and offline Timendus checks
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Exercise native Windows paths
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'build/Release/CHIP8.Emulator.exe').Path
+          $process = Start-Process -FilePath $exe -ArgumentList '--smoke-test', 'build/smoke' -PassThru
+          if (-not $process.WaitForExit(60000)) {
+            $process.Kill()
+            throw 'Native Windows smoke check timed out'
+          }
+          if ($process.ExitCode -ne 0) { throw "Native Windows smoke exit: $($process.ExitCode)" }
+          $result = Get-Content 'build/smoke/smoke-result.txt'
+          if ($result[0] -ne 'PASS') { throw 'Native Windows smoke report failed' }
+          $result
+      - name: Create and verify portable ZIP
+        run: python scripts/package_release.py --exe build/Release/CHIP8.Emulator.exe --output dist
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: CHIP8-Studio-release
+          path: |
+            dist/CHIP8-Studio-Windows-x64.zip
+            dist/SHA256SUMS.txt
+            dist/build-info.json
           if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: Windows-verification
+          path: |
+            build/smoke/
+            build/Testing/Temporary/LastTest.log
+            build/rom-results/verification.json
+          if-no-files-found: warn
+
+  release:
+    name: Publish verified Windows release
+    needs: [linux, windows]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'MyasAlex/CHIP8'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: CHIP8-Studio-release
+          path: dist
+      - name: Publish release after complete asset upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/publish_release.py --assets dist
