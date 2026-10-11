@@ -34,6 +34,14 @@ Open your own ROM with **Ctrl+O** or drop it onto the window. The **Игры** m
 | Gamepads and sound | XInput support, classic beep and XO-CHIP audio patterns. |
 | Offline use | Games and demo are embedded in the EXE. No account or network connection is required. |
 
+<details>
+<summary>See the actual Windows app and debug panel</summary>
+
+![Native CHIP-8 Studio window with debug panel](docs/media/windows-app.png)
+
+Captured from the native Windows build during its smoke check.
+</details>
+
 ## Controls
 
 | Action | Key |

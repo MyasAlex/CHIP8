@@ -3,6 +3,7 @@
 - banner.svg is a code-authored vector banner.
 - gameplay.gif and gameplay.png show actual framebuffer output of this emulator's core running the project's original two-player Pong. Scripted inputs move both paddles for the demonstration. They are not recordings of the desktop window and do not demonstrate a built-in bot.
 - social-preview.png is a promotional card incorporating one of those actual game frames.
+- windows-app.png is an unchanged window capture from the native Windows smoke check in GitHub Actions run 38156283417, source commit 42069630e405400c0a30b4b255045b12b0bc6115. It shows the real Win32 application with its debug panel enabled.
 
 To regenerate on Linux with a C++20 compiler, Python and Pillow:
 
