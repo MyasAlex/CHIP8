@@ -8,6 +8,6 @@ In the full source archive, `third_party/timendus` is an unmodified snapshot of 
 
 In the full source archive, `tests/golden` contains framebuffer captures from the corresponding guest test programs, produced with [C-Octo](https://github.com/JohnEarnest/c-octo) as the external reference. Keep the Timendus notices when redistributing these test assets. The reference core itself is not bundled here.
 
-The compiler runtime was statically linked by MinGW-w64/GCC with the GCC Runtime Library Exception. The application loads Windows system components and optionally the system XInput DLL. No third-party UI framework is included.
+Portable Windows releases statically link the compiler runtime. The GitHub Actions build uses MSVC; alternative MinGW-w64/GCC builds use the GCC Runtime Library Exception. The application loads Windows system components and optionally the system XInput DLL. No third-party UI framework is included.
 
 Primary behavior references: [XO-CHIP specification](https://github.com/JohnEarnest/Octo/blob/gh-pages/docs/XO-ChipSpecification.md), [Timendus test descriptions](https://github.com/Timendus/chip8-test-suite), [CHIP-8 database quirk descriptions](https://chip-8.github.io/database/).
