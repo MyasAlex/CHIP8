@@ -37,7 +37,10 @@ CHIP-8 (VIP), CHIP-8 (Modern), Super-CHIP (Modern), XO-CHIP 1.1.
 Сохранения и настройки: %LOCALAPPDATA%\CHIP8Studio
 Открыть эту папку: «Файл → Папка данных и снимков».
 
-Готовый EXE собран под Windows x64. Ядро и внешние ROM проверены.
-Графический запуск, звук и реальные геймпады на настоящей Windows в этой среде не проверены.
+Готовый EXE предназначен для Windows x64.
+Сборка и проверки ядра, внешних ROM и оконных API выполняются в GitHub Actions.
+Физический звук, реальные геймпады и аппаратный VSync проверяются на компьютере пользователя.
 
-Исходники и подробный отчёт есть в полном архиве проекта.
+Исходники: https://github.com/MyasAlex/CHIP8
+Последний релиз: https://github.com/MyasAlex/CHIP8/releases/latest
+Инструкции в архиве: docs/USER_GUIDE_RU.md и docs/USER_GUIDE.md

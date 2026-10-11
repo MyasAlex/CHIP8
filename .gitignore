@@ -1,9 +1,9 @@
 .vs/
 *.user
 *.suo
-bin/
-obj/
-build/
+/bin/
+/obj/
+/build/
 *.exe
 *.c8state
 *.rpl
