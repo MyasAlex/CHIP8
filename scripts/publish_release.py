@@ -47,6 +47,16 @@ def upload_file(upload_url, path):
         return json.load(response)
 
 
+def require_ancestor(previous, commit):
+    if previous == commit:
+        return
+    if not re.fullmatch(r"[0-9a-f]{40}", previous):
+        raise RuntimeError("Existing release has an unexpected target")
+    comparison = api_json(f"repos/{REPO}/compare/{previous}...{commit}")
+    if comparison["status"] != "ahead" or comparison["merge_base_commit"]["sha"] != previous:
+        raise RuntimeError("Existing release is not an ancestor of this verified build")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--assets", type=Path, required=True)
@@ -68,6 +78,24 @@ def main():
                 for path in assets}
     releases = api_json(f"repos/{REPO}/releases?per_page=100")
     existing = next((release for release in releases if release["tag_name"] == tag), None)
+    if not existing:
+        # Correct a workflow release accidentally published with GitHub's
+        # temporary draft tag. Preserve its already-published files and commit.
+        candidates = [release for release in releases
+                      if not release["draft"] and release["tag_name"].startswith("untagged-")
+                      and release["name"] == info["title"]
+                      and release["author"]["login"] == "github-actions[bot]"
+                      and set(expected) <= {asset["name"] for asset in release["assets"]}]
+        if len(candidates) > 1:
+            raise RuntimeError("More than one workflow release needs a tag correction")
+        if candidates:
+            previous = candidates[0]
+            require_ancestor(previous["target_commitish"], commit)
+            existing = api_json(f"repos/{REPO}/releases/{previous['id']}", "PATCH", {
+                "tag_name": tag, "target_commitish": previous["target_commitish"],
+                "draft": False, "prerelease": False, "make_latest": "true"})
+            if existing["tag_name"] != tag or existing["draft"]:
+                raise RuntimeError("GitHub did not correct the workflow release tag")
     if existing and not existing["draft"]:
         print(f"{tag} is already published; keeping it unchanged.")
         return
@@ -75,14 +103,9 @@ def main():
         if existing["author"]["login"] != "github-actions[bot]" or existing["name"] != info["title"]:
             raise RuntimeError("Existing draft was not created by this release workflow")
         previous = existing["target_commitish"]
-        if previous != commit:
-            if not re.fullmatch(r"[0-9a-f]{40}", previous):
-                raise RuntimeError("Existing draft has an unexpected target")
-            comparison = api_json(f"repos/{REPO}/compare/{previous}...{commit}")
-            if comparison["status"] != "ahead" or comparison["merge_base_commit"]["sha"] != previous:
-                raise RuntimeError("Existing draft is not an ancestor of this verified build")
+        require_ancestor(previous, commit)
         release = api_json(f"repos/{REPO}/releases/{existing['id']}", "PATCH", {
-            "target_commitish": commit, "name": info["title"],
+            "tag_name": tag, "target_commitish": commit, "name": info["title"],
             "body": notes.read_text(encoding="utf-8"), "draft": True})
     else:
         release = api_json(f"repos/{REPO}/releases", "POST", {
@@ -104,7 +127,8 @@ def main():
         if not asset or asset["state"] != "uploaded" or asset["size"] != size or asset.get("digest") != digest:
             raise RuntimeError("Draft asset verification failed; release remains unpublished")
     published = api_json(f"repos/{REPO}/releases/{release_id}", "PATCH",
-                         {"draft": False, "make_latest": "true"})
+                         {"tag_name": tag, "target_commitish": commit,
+                          "draft": False, "prerelease": False, "make_latest": "true"})
     if published["draft"] or published["tag_name"] != tag:
         raise RuntimeError("GitHub did not publish the expected release")
     print(f"Published {published['html_url']}")

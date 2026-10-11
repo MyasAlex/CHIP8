@@ -64,6 +64,7 @@ class PublicationTests(unittest.TestCase):
             return None
         if method == "PATCH":
             self.release.update(payload)
+            self.release["tag_name"] = payload.get("tag_name", "untagged-test")
         return copy.deepcopy(self.release)
 
     def upload(self, url, path):
@@ -90,7 +91,22 @@ class PublicationTests(unittest.TestCase):
         self.assertFalse(self.release["draft"])
         self.assertEqual(len(self.release["assets"]), 3)
         self.assertEqual(self.writes[-1], ("PATCH", f"repos/{publisher.REPO}/releases/91",
-                                          {"draft": False, "make_latest": "true"}))
+                                          {"tag_name": "v2.1.0", "target_commitish": COMMIT,
+                                           "draft": False, "prerelease": False, "make_latest": "true"}))
+
+    def test_temporary_published_tag_is_corrected_without_replacing_files(self):
+        self.release = self.draft(PREVIOUS)
+        for path in self.assets.iterdir():
+            self.upload(self.release["upload_url"], path)
+        self.release["draft"] = False
+        self.release["tag_name"] = "untagged-test"
+        original_assets = copy.deepcopy(self.release["assets"])
+        self.writes.clear()
+        self.run_publisher()
+        self.assertEqual(self.release["tag_name"], "v2.1.0")
+        self.assertEqual(self.release["target_commitish"], PREVIOUS)
+        self.assertEqual(self.release["assets"], original_assets)
+        self.assertEqual(len(self.writes), 1)
 
     def test_workflow_draft_from_previous_commit_is_resumed(self):
         self.release = self.draft(PREVIOUS)
