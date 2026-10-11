@@ -1,59 +1,75 @@
-# Эмулятор CHIP-8 для Visual Studio
+<p align="center"><img src="docs/media/banner.svg" alt="CHIP-8 Studio — Play. Pause. Rewind." width="100%"></p>
 
-Готовый учебный CHIP-8-эмулятор под Windows/Visual Studio.
+<p align="center">
+  <a href="https://github.com/MyasAlex/CHIP8/releases/latest/download/CHIP8-Studio-Windows-x64.zip"><img src="https://img.shields.io/badge/DOWNLOAD-Windows_x64-75e3bd?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows x64"></a>
+  <a href="https://github.com/MyasAlex/CHIP8/actions/workflows/build-windows.yml"><img src="https://github.com/MyasAlex/CHIP8/actions/workflows/build-windows.yml/badge.svg" alt="Build and tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8caeff" alt="MIT license"></a>
+</p>
 
-## Запуск
+<p align="center"><a href="README.ru.md">Русский</a> · <a href="https://github.com/MyasAlex/CHIP8/releases/latest">Release notes</a> · <a href="docs/USER_GUIDE.md">Player guide</a> · <a href="docs/BUILDING.md">Build from source</a></p>
 
-1. Распакуйте ZIP.
-2. Дважды нажмите `CHIP8.sln`.
-3. В Visual Studio нажмите зелёную кнопку `▶` (проект CHIP8.Emulator должен быть запускаемым).
+**A portable CHIP-8 emulator for Windows, with built-in games, save states and rewind.** Download the ZIP, extract it and open **CHIP8.Emulator.exe**. Visual Studio and additional compiler DLLs are unnecessary for the release package. The current application interface is in Russian; this README and the player guide are available in English.
 
-CMake и SDL2 не требуются.
+<p align="center"><img src="docs/media/gameplay.gif" alt="Two-player Pong running in the CHIP-8 Studio core" width="800"></p>
 
-## Управление
+*Actual frames from the emulator core, with scripted paddle input. This preview shows the game display; the desktop application has its own window and menus.*
 
-CHIP-8 клавиатура:
+## Start playing
 
-```
-1 2 3 4
-Q W E R
-A S D F
-Z X C V
-```
+1. [Download CHIP8-Studio-Windows-x64.zip](https://github.com/MyasAlex/CHIP8/releases/latest/download/CHIP8-Studio-Windows-x64.zip).
+2. Extract the whole ZIP to a folder and open **CHIP8.Emulator.exe**.
+3. Pong for two players starts immediately. **W / S** move the left paddle; **↑ / ↓** move the right paddle.
 
-В эмуляторе это соответствует:
+Open your own ROM with **Ctrl+O** or drop it onto the window. The **Игры** menu also contains classic Pong against its ROM's opponent, Breakout and an animated demo. Windows 10/11 x64 is the target platform.
 
-```
-1 2 3 C
-4 5 6 D
-7 8 9 E
-A 0 B F
-```
+## What you get
 
-Дополнительно:
+| Feature | What it does |
+| --- | --- |
+| CHIP-8, Super-CHIP and XO-CHIP | Selectable compatibility profiles and individual instruction quirks. |
+| XOR stabilization | Reduces sprite disappearance in classic Pong and Breakout. Switch to the exact display for tests or intentional flashing effects. |
+| Save and rewind | F5 saves, F8 restores, Backspace moves back through recent snapshots. |
+| Pixel display | Integer scaling, fullscreen and PNG screenshots. |
+| Debugging | Registers, disassembly, frame stepping and instruction stepping. |
+| Gamepads and sound | XInput support, classic beep and XO-CHIP audio patterns. |
+| Offline use | Games and demo are embedded in the EXE. No account or network connection is required. |
 
-- `P` — пауза
-- `F1` — сброс
-- `Esc` — выход
-- `Ctrl+O` — открыть ROM
+<details>
+<summary>See the actual Windows app and debug panel</summary>
 
-## Игры
+![Native CHIP-8 Studio window with debug panel](docs/media/windows-app.png)
 
-В папке `roms` находятся `Pong.ch8` и `Breakout.ch8`.
-Их можно открыть через меню **Игры** или через **Файл → Открыть ROM**.
+Captured from the native Windows build during its smoke check.
+</details>
 
-## Архитектура
+## Controls
 
-- `src/Chip8Core.*` — CPU, память, стек, таймеры, клавиатура и дисплей.
-- `src/WindowsMain.cpp` — окно Win32, ввод, вывод и звук.
-- `tests/Chip8Tests.cpp` — автоматические тесты ядра.
+| Action | Key |
+| --- | --- |
+| Open ROM / pause / restart | Ctrl+O / P / F1 |
+| Save / load / rewind | F5 / F8 / Backspace |
+| Screenshot / fullscreen | F6 / F11; Esc leaves fullscreen |
+| Step one frame / instruction | F9 / F10 |
+| Debug panel / mute | F12 / M |
 
+The physical keyboard rows **1234 / QWER / ASDF / ZXCV** map to CHIP-8 **123C / 456D / 789E / A0BF**. A Russian keyboard layout keeps the same physical controls. [Full guide and troubleshooting →](docs/USER_GUIDE.md)
 
-## Timing
-The emulator uses a default CPU rate of 700 instructions/second and CHIP-8 timers at 60 Hz. This is intentionally conservative for classic ROMs such as Pong and Breakout.
+## Version 2.1: steadier moving sprites
 
-## Timing / display
+Classic CHIP-8 programs often erase a sprite and draw it again in separate instructions. If a display frame falls between those operations, the object disappears for that frame. Studio observes the draw instructions and briefly holds an erased sprite until its matching redraw. It keeps this presentation separate from the guest display, collision flags and execution timing.
 
-The emulator uses a simple CHIP-8 draw-pending model: a draw instruction marks the display dirty, and the Windows front-end presents the newest complete framebuffer immediately. The CPU target remains 700 instructions/s and the CHIP-8 timers are updated independently at 60 Hz.
+The exact display remains available. Stabilization is a visual heuristic, and can delay an object's disappearance by up to four frame boundaries (66.7 ms). [Implementation and regression results →](docs/FLICKER.md)
 
-The project intentionally does not use a display-generation "quiet period" heuristic, because that can suppress normal continuous-motion ROMs such as Pong.
+## Built to be checked
+
+The repository includes **47 groups of core tests** and **31 offline Timendus ROM scenarios**, with framebuffer comparisons against C-Octo reference captures. GitHub Actions builds and tests the project on Linux and Windows. The Windows job also exercises the native window, GDI, keyboard messages, save/load, fullscreen and PNG paths before packaging a release.
+
+Linux builds the portable core and test tools; the desktop frontend is Win32. The emulator does not implement Super-CHIP Legacy, CHIP-8X, MegaChip, or cycle-level COSMAC VIP / HP48 hardware emulation. Real speakers and physical gamepads still need testing on the user's machine.
+
+## Help improve it
+
+[Report a bug](https://github.com/MyasAlex/CHIP8/issues/new?template=bug_report.yml) with the ROM name, profile, CPU speed and steps to reproduce. [Suggest a feature](https://github.com/MyasAlex/CHIP8/issues/new?template=feature_request.yml) or read the [contribution guide](CONTRIBUTING.md).
+
+If you enjoy it, a star or a link shared with another emulator enthusiast helps people find the project.
+
+The emulator is MIT licensed. Guest ROMs and external test assets retain their own notices; see [THIRD_PARTY.md](THIRD_PARTY.md).

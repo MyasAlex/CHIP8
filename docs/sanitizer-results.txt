@@ -1,0 +1,51 @@
+PASS Reset/font/generation
+PASS Atomic ROM rejection
+  Exhaustive arithmetic cases: 786432
+PASS Exhaustive VF arithmetic
+PASS Shift source/VF aliases
+PASS Logic reset/VF operand
+PASS 7XNN preserves VF
+PASS Call/return
+PASS Stack bounds
+PASS Conditional skips
+PASS BNNN profiles
+PASS RAM bounds/atomic writes
+PASS Invalid opcodes
+PASS BCD all byte values
+PASS Load/store profiles
+PASS Fonts/masked digits
+PASS Timers saturate
+PASS Key skip/down/up
+PASS FX0A release/repeat
+PASS FX0A held key
+PASS Focus loss/re-arm
+PASS Sprite XOR/collision
+PASS VF draw coordinates
+PASS Clipping/wrapping
+PASS Vertical blank gate
+PASS Resolution/16x16
+PASS SCHIP scrolling
+PASS RPL flags
+PASS XO long skip
+PASS XO 64K memory
+PASS XO range reverse
+PASS XO selected planes
+PASS XO pattern/pitch
+PASS State deterministic replay
+PASS State corruption/ROM binding
+PASS State input re-arm
+PASS Scheduler chunk invariance
+PASS Scheduler host stall bounds
+PASS Presentation finite erasure hold
+PASS Presentation independent sprites/no trails
+PASS Presentation shared-register pairing
+PASS Presentation clear/scroll/mode reset
+PASS Presentation XO planes
+PASS Presentation exact/forced bypass
+  Pong: 700 active ball samples, 389 XOR gaps, 0 presented gaps
+  Breakout: 277 active ball samples, 125 XOR gaps, 0 presented gaps
+PASS Pong/Breakout flicker and state regression
+PASS Bundled ROM smoke
+PASS Two-player Pong input/no AI
+PASS Random ROM/state fuzz
+All 47 test groups passed.

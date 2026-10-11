@@ -1,0 +1,15 @@
+CHIP-8 Studio 2.1 — Windows x64
+
+1. Extract the entire ZIP to a folder.
+2. Open CHIP8.Emulator.exe.
+3. Two-player Pong starts immediately: W/S = left paddle; Up/Down = right paddle.
+
+Ctrl+O opens your own ROM. You can also drag it into the window.
+P = pause; F1 = restart; F5/F8 = save/load; Backspace = rewind.
+F6 = PNG; F11 = fullscreen; F12 = debug; M = mute.
+
+The interface is currently Russian. Games and the demo are embedded in the EXE.
+Settings and saves: %LOCALAPPDATA%\CHIP8Studio
+Player guides: docs/USER_GUIDE.md and docs/USER_GUIDE_RU.md
+Latest release: https://github.com/MyasAlex/CHIP8/releases/latest
+Bug reports: https://github.com/MyasAlex/CHIP8/issues

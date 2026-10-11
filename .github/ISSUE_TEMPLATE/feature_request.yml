@@ -1,0 +1,17 @@
+name: Feature / Предложение
+description: Suggest an improvement / Предложить улучшение
+title: "[Feature] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do? / Что хочется сделать?
+      description: "Describe the player or developer need. / Опишите задачу игрока или разработчика."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested behavior / Предлагаемое поведение
+    validations:
+      required: true
