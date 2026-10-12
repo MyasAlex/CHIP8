@@ -1,15 +1,30 @@
-CHIP-8 Studio 2.1 — Windows x64
+CHIP-8 Studio 3.0 — Windows 10/11 x64
 
-1. Extract the entire ZIP to a folder.
-2. Open CHIP8.Emulator.exe.
-3. Two-player Pong starts immediately: W/S = left paddle; Up/Down = right paddle.
+1. Extract the ENTIRE ZIP, including roms/catalog.
+2. Open CHIP8.Emulator.exe. No compiler installation is required.
+3. Press Library (Библиотека) or Ctrl+L to choose a program.
 
-Ctrl+O opens your own ROM. You can also drag it into the window.
-P = pause; F1 = restart; F5/F8 = save/load; Backspace = rewind.
-F6 = PNG; F11 = fullscreen; F12 = debug; M = mute.
+First launch starts two-player Pong: W/S = left, Up/Down = right.
+Later launches can resume the last game from its automatic save.
 
-The interface is currently Russian. Games and the demo are embedded in the EXE.
-Settings and saves: %LOCALAPPDATA%\CHIP8Studio
-Player guides: docs/USER_GUIDE.md and docs/USER_GUIDE_RU.md
-Latest release: https://github.com/MyasAlex/CHIP8/releases/latest
-Bug reports: https://github.com/MyasAlex/CHIP8/issues
+The catalog contains 210 unique games, demos and programs, plus original Studio
+programs. It is not every historical ROM. Eleven entries need other platforms.
+
+Ctrl+O = open/import ROMs; P/F1 = pause/restart
+F5/F8 = save/load selected slot (ten per ROM)
+Hold Backspace = rewind; drag the timeline to choose a moment
+Hold Tab/Ctrl = turbo 4x / slow motion 0.25x
+F6 = PNG; F11 = fullscreen; F12 = debug; M = mute
+
+The current interface is Russian. Menu translations:
+Файл = File; Игры = Games; Эмуляция = Emulation; Экран = Display
+Запись = Recording; Диагностика = Diagnostics; Справка = Help
+
+Includes optional CRT/phosphor, GIF and H264/AAC MP4 recording, input replay,
+keyboard remapping, virtual keypad, breakpoints and settings/save transfer.
+MP4 requires the installed Windows Media Foundation codecs; GIF does not.
+
+Data: %LOCALAPPDATA%\CHIP8Studio, or userdata beside the EXE in portable mode.
+Player guide: docs/USER_GUIDE.md; full Russian guide: docs/STUDIO_3_RU.md
+ROM distribution notices: THIRD_PARTY.md
+Source and updates: https://github.com/MyasAlex/CHIP8

@@ -85,6 +85,9 @@
   <ItemGroup>
     <ClInclude Include="src\Chip8Core.hpp" />
     <ClInclude Include="src\DemoRom.hpp" />
+    <ClInclude Include="src\CatalogData.hpp" />
+    <ClInclude Include="src\StudioMedia.hpp" />
+    <ClInclude Include="src\StudioStorage.hpp" />
     <ClInclude Include="src\resource.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

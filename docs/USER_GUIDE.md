@@ -1,56 +1,61 @@
-# CHIP-8 Studio: player guide
+# CHIP-8 Studio 3.0: player guide
 
-## Download and launch
+Download the [Windows x64 ZIP](https://github.com/MyasAlex/CHIP8/releases/latest/download/CHIP8-Studio-Windows-x64.zip), extract **the whole archive**, including `roms/catalog`, and open **CHIP8.Emulator.exe**. First launch starts two-player Pong: W/S moves the left paddle, Up/Down the right. Later launches can resume the last game from its automatic save.
 
-Download **CHIP8-Studio-Windows-x64.zip** from the [latest release](https://github.com/MyasAlex/CHIP8/releases/latest), extract the whole archive and open **CHIP8.Emulator.exe**. The target system is Windows 10/11 x64. Games and the demo are embedded in the executable.
+Press **Библиотека** or **Ctrl+L** for the offline library: search, covers, favorites, recently played programs and playtime. The catalog has 210 unique games, demos and programs; original Studio programs bring the library to 212 entries. Eleven catalog entries require other platforms and are marked accordingly. It is not an exhaustive historical archive.
 
-The application interface is currently Russian. Useful menu names are **Файл** (File), **Игры** (Games), **Экран** (Display) and **Эмуляция** (Emulation).
-
-Two-player Pong starts on launch. Player one uses **W/S**, player two uses **↑/↓**. In **Игры**, choose classic Pong for the original ROM's opponent, Breakout or the animated demo. Two-player Pong has no built-in bot.
-
-## Load another game
-
-Use **Ctrl+O**, drag a ROM onto the window, or pass its path on the command line. Extensions .ch8, .rom, .sc8 and .xo8 are accepted. .sc8 selects Super-CHIP; .xo8 and ROMs larger than 3584 bytes select XO-CHIP. An ordinary .ch8 starts with Modern unless its saved settings choose another profile. There is no automatic hash-based compatibility database.
-
-## Keyboard and controllers
+The interface is Russian. Menu translations: **Файл** = File, **Игры** = Games, **Эмуляция** = Emulation, **Экран** = Display, **Запись** = Recording, **Диагностика** = Diagnostics.
 
 | Action | Key |
 | --- | --- |
-| Open ROM | Ctrl+O |
-| Pause / restart | P / F1 |
-| Save state / load state | F5 / F8 |
-| Rewind | Backspace |
-| Save PNG | F6 |
-| Step a frame / instruction | F9 / F10 |
-| Fullscreen / leave fullscreen | F11 / Esc |
-| Debug panel / mute | F12 / M |
+| Open one ROM / import several | Ctrl+O; also drag and drop |
+| Library | Ctrl+L |
+| Pause / restart from the beginning | P / F1 |
+| Save / load selected slot | F5 / F8 |
+| Rewind | Hold Backspace or drag the timeline |
+| Turbo 4× / slow motion 0.25× | Hold Tab / Ctrl |
+| Screenshot / fullscreen | F6 / F11 |
+| Debug / instruction / frame | F12 / F10 / F9 |
+| Mute | M |
 
-CHIP-8 keys **123C / 456D / 789E / A0BF** use the physical keyboard rows **1234 / QWER / ASDF / ZXCV**. The game itself chooses which keys it uses.
+## Games and controls
 
-For two-player Pong, the first XInput controller moves the left paddle and the second moves the right paddle with D-pad up/down or the left stick. In other ROMs, D-pad/stick map to 5/8/7/9, and A/B/X/Y/Start map to 6/4/0/F/A.
+The four embedded programs work without catalog files. The full library needs the bundled `roms/catalog` directory. Library pages change with the mouse wheel or bottom arrows; right-click a card for its description. Click its star to toggle a favorite.
 
-## Speed, profiles and flicker
+Open/import accepts .ch8, .rom, .sc8 and .xo8. Known ROM content selects profiles, quirks, CPU speed, colors and controls from 547 SHA-1 fingerprints. Saved user choices take priority. Unknown ROMs use extension/size defaults, which can be changed in Emulation.
 
-Start with the game's saved defaults. Classic Pong and Breakout are configured for 700 instructions per second; the original two-player Pong uses 6000. Changing CPU speed changes how quickly a ROM executes, while timers remain at 60 Hz.
+Physical rows `1234 / QWER / ASDF / ZXCV` map to CHIP-8 `123C / 456D / 789E / A0BF`. For known programs, arrows/Space/Enter and XInput directions/A/B also use the database controls. Two-player Pong has no bot; the first XInput pad moves the left paddle and the second the right.
 
-Select VIP, Modern, Super-CHIP Modern or XO-CHIP to match the ROM's requirements. Changing instruction quirks restarts the ROM. Profile, quirks and speed are remembered per ROM.
+**Эмуляция → Переназначить 16 клавиш** captures sixteen unique physical keys, 0 through F. Esc cancels the change. It is saved per ROM and replaces the automatic keyboard shortcuts for game input. P, M, Tab, Ctrl, Backspace, Esc and function keys remain application commands. **Виртуальная клавиатура** enables a mouse-operated keypad.
 
-XOR stabilization is enabled by default. It holds an erased sprite briefly until its matching redraw, reducing visible gaps in some old games. For test ROMs or deliberate blinking, select the exact display mode. Stabilization is a presentation heuristic and does not alter the guest's collision flags or memory; unmatched erasures can remain visible for up to 66.7 ms.
+## Display and timing
 
-## Where files go
+**Оригинал** shows the exact display and disables visual effects. **Стабильный** stabilizes intermediate XOR erasures; it is the default. **Плавный** adds a short phosphor trail. **CRT** independently enables scanlines, glow and vignette with adjustable intensity. Eight manual palettes and ROM-provided colors are available.
 
-Settings, state files, RPL flags and PNG screenshots are stored in **%LOCALAPPDATA%\\CHIP8Studio**. The **Файл → Папка данных** command opens the data folder. If Local AppData is unavailable, the application uses userdata beside the executable.
+These effects never alter guest memory or collision flags. Stabilization can delay an unmatched disappearance by up to 66.7 ms; phosphor intentionally creates short trails. Use Exact for tests and Stable for ordinary play without trails.
 
-F5 stores the current ROM's state; F8 validates and restores it. Corrupt saves and saves from another ROM are rejected. CPU speed follows the current application settings. Rewind keeps up to 31 in-memory snapshots about one second apart.
+Turbo/slow motion scale the whole virtual clock, including timers and input. CPU speed selects instructions per virtual second; guest timers remain 60 Hz. FPS reports virtual frames per real second. CPU usage is process time divided by system processing capacity, not a hardware VSync measurement.
 
-## If something looks wrong
+## Saves and rewind
 
-| Symptom | Try |
-| --- | --- |
-| Controls appear unresponsive | Click the game window, check the ROM's key instructions and press P if paused. |
-| An old game flickers | Enable XOR stabilization and try the game's original CPU speed and profile. |
-| A test ROM's intentional flashing looks different | Select the exact display. |
-| A ROM stops with an instruction error | Check its required profile and extension, then include the error and ROM details in a report. |
-| No sound | Press M, check Windows output volume and the active output device. Sound is only generated while a ROM's sound timer is active. |
+File selects one of ten slots per ROM for F5/F8. New saves have a PNG preview beside the state file. Slot one can read the legacy single-state file from 2.1. Corrupt and wrong-ROM states are rejected.
 
-For an unresolved issue, [open a bug report](https://github.com/MyasAlex/CHIP8/issues/new?template=bug_report.yml). Include the release version, Windows version, ROM name or legal source link, profile, CPU speed and reproduction steps. A video or PNG helps explain display problems.
+Autosave runs every 30 virtual seconds and on ROM changes/window close. Automatic saving and resuming are separate menu options. F1 always restarts from the beginning.
+
+The timeline captures 30 snapshots per virtual second. Select a 30/60/120-second limit in Emulation; compressed storage is bounded to 64 MiB, so heavy memory changes can shorten it. Hold Backspace for roughly 4× rewind, or drag the timeline. Releasing it resumes the previous pause state and discards the future branch. Input is released; presentation holds are rebuilt when execution resumes.
+
+## Recording and diagnosis
+
+Recording supports GIF (256×128, 256 colors, 30 FPS) and H.264/AAC MP4 (512×256, mono 48 kHz, 30 FPS). Stop from Recording; ROM changes, rewind and closing also finalize the file. Limit: approximately two virtual minutes, plus 128 MiB for GIF. Pauses are omitted; speed modes change how quickly virtual recording time accumulates. MP4 requires installed Windows Media Foundation codecs; GIF remains available if they are absent.
+
+Input recording restarts the ROM, stores initial state/RNG, speed, key masks and per-frame checksums, and writes a `.c8replay` when stopped. Limit: twenty minutes. Replay includes the ROM, ignores physical game input and checks every frame. Divergence stops execution with a frame number. Profile/speed changes, state loading and rewind finish input recording/playback.
+
+Diagnostics adds HEX-address breakpoints, memory browsing, register change highlights, the last 1024 instruction attempts while debugging, comparison PNGs and text reports. Comparison PNG: exact guest screen on the left, stabilized screen on the right, with effects omitted.
+
+## Data and transfer
+
+Data is in `%LOCALAPPDATA%\CHIP8Studio`; **Файл → Папка данных и снимков** opens it. Portable mode transfers data to `userdata` beside the EXE and creates `portable.ini`; disabling it copies data back. Old folders are retained.
+
+Settings export creates a `.c8pack` with settings, states, RPL and managed imported ROMs, up to 64 MiB. The shared catalog travels with the application ZIP. Screenshots, videos and input replays are not included. Import verifies checksum and permitted filenames, replaces matching files and reloads the current game.
+
+CHIP-8X, Super-CHIP Legacy, MegaChip, cycle-level VIP/HP48 and a game editor are not implemented. Catalog boot tests do not verify full game playthroughs. See the [complete Russian guide](STUDIO_3_RU.md) and [ROM notices](../THIRD_PARTY.md). For a problem, export a report and input replay if possible, then [open an issue](https://github.com/MyasAlex/CHIP8/issues/new?template=bug_report.yml).

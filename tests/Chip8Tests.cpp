@@ -1,5 +1,6 @@
 #include "../src/Chip8Core.hpp"
 #include "../src/DemoRom.hpp"
+#include "../src/StudioStorage.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -212,6 +213,80 @@ void fuzz() {
         const auto saved=c.saveState();std::string problem;auto corrupt=saved;corrupt[random()%corrupt.size()]^=1;CHECK(!c.loadState(corrupt,problem));
     }
 }
+void timeline() {
+    chip8::RewindBuffer history(90000,180);
+    std::mt19937 random(83);std::vector<std::uint8_t> state(20000);
+    std::vector<std::vector<std::uint8_t>> expected;
+    for(unsigned frame=0;frame<400;++frame) {
+        for(int n=0;n<30;++n)state[random()%state.size()]=static_cast<std::uint8_t>(random());
+        expected.push_back(state);history.capture(state,frame);
+        CHECK(history.bytes()<=90000);
+        CHECK(history.frame(history.size()-1)-history.frame(0)<=180);
+        for(std::size_t index=0;index<history.size();index+=19) {
+            std::vector<std::uint8_t> restored;CHECK(history.restore(index,restored));
+            CHECK(restored==expected.at(history.frame(index)));
+        }
+    }
+    const auto middle=history.size()/2,chosen=history.frame(middle);
+    history.branch(middle);CHECK(history.size()==middle+1);
+    state=expected[chosen];state[37]^=128;history.capture(state,chosen+1);
+    std::vector<std::uint8_t> result;CHECK(history.restore(history.size()-1,result)&&result==state);
+    history.capture(std::vector<std::uint8_t>(35000,42),chosen+2);
+    CHECK(history.restore(history.size()-1,result)&&result==std::vector<std::uint8_t>(35000,42));
+    const auto before=result;CHECK(!history.restore(history.size(),result)&&result==before);
+    chip8::RewindBuffer small(1024,60);std::vector<std::uint8_t> noise(20000);
+    for(auto& b:noise)b=static_cast<std::uint8_t>(random());
+    small.capture(noise,0);CHECK(small.bytes()<=1024&&small.size()==0);
+}
+void phaseAndBreakpoints() {
+    Chip8 a,b;load(a,{0x7001,0x1200});load(b,{0x7001,0x1200});
+    chip8::Scheduler sa(733),sb(733);sa.advance(a,0.009);
+    std::string problem;CHECK(b.loadState(a.saveState(),problem));CHECK(sb.restorePhase(sa.phase()));
+    for(int frame=0;frame<300;++frame) {sa.advance(a,1.0/60);sb.advance(b,1.0/60);CHECK(a.saveState()==b.saveState());}
+    auto invalid=sa.phase();invalid.cpu=1;CHECK(!sa.restorePhase(invalid));
+    invalid=sa.phase();invalid.hz=std::nan("");CHECK(!sa.restorePhase(invalid));
+    load(a,{0x7001,0x1200});sa.reset();
+    sa.advance(a,0.01,{}, {},[&]{return a.pc()!=0x202;});
+    CHECK(a.pc()==0x202&&a.registers()[0]==1&&a.instructionCount()==1);
+    sa.advance(a,0.001);CHECK(a.pc()==0x200&&a.instructionCount()==2);
+}
+void inputReplay() {
+    for(const auto bytes:{chip8_demo::Pong2,rom({0xC0FF,0xF10A,0x8014,0x1200})}) {
+        Chip8 a;CHECK(a.loadRom(bytes));a.seedRandom(178);
+        chip8::Replay recording;recording.hz=6000;recording.rom=bytes;recording.initial=a.saveState();
+        chip8::Scheduler scheduler(recording.hz);
+        for(int frame=0;frame<600;++frame) {
+            const auto mask=static_cast<std::uint16_t>(frame%15<7?1u<<((frame/45)%16):0);
+            for(std::uint8_t key=0;key<16;++key)a.setKey(key,(mask&(1u<<key))!=0);
+            scheduler.advance(a,1.0/60);recording.frames.push_back({mask,chip8::stateDigest(a.saveState())});
+        }
+        const auto encoded=recording.encode();CHECK(!encoded.empty());
+        chip8::Replay decoded;std::string error;CHECK(chip8::Replay::decode(encoded,decoded,error));
+        Chip8 b;CHECK(b.loadRom(decoded.rom));CHECK(b.loadState(decoded.initial,error));
+        chip8::Scheduler playback(decoded.hz);
+        for(const auto frame:decoded.frames) {
+            for(std::uint8_t key=0;key<16;++key)b.setKey(key,(frame.keys&(1u<<key))!=0);
+            playback.advance(b,1.0/60);CHECK(chip8::stateDigest(b.saveState())==frame.digest);
+        }
+        CHECK(a.saveState()==b.saveState());
+        auto corrupted=encoded;corrupted[100]^=1;CHECK(!chip8::Replay::decode(corrupted,decoded,error));
+        CHECK(decoded.frames.size()==600);corrupted.resize(20);CHECK(!chip8::Replay::decode(corrupted,decoded,error));
+        recording.initial=a.saveState();CHECK(!chip8::Replay::decode(recording.encode(),decoded,error));
+    }
+}
+void settingsBundle() {
+    using namespace chip8_storage;
+    const std::vector<Entry> original{{"settings.ini",{1,2,3}},{"ABCDEF0123456789.slot9.c8state",{5,6}},
+        {"roms/0123456789abcdef0123456789abcdef01234567.ch8",{0x12,0x00}}};
+    const auto bytes=encode(original);CHECK(!bytes.empty());std::vector<Entry> decoded;
+    CHECK(decode(bytes,decoded)&&decoded.size()==3&&decoded[2].bytes==original[2].bytes);
+    auto bad=bytes;bad[15]^=1;CHECK(!decode(bad,decoded)&&decoded.size()==3);
+    bad.resize(15);CHECK(!decode(bad,decoded));
+    for(const auto name:{"../settings.ini","/settings.ini","roms/../../test.ch8","C:\\settings.ini","settings.ini:stream","unrelated.exe"})CHECK(!safeName(name));
+    CHECK(encode({{"../settings.ini",{}}}).empty());CHECK(encode({original[0],original[0]}).empty());
+    Chip8 cpu;CHECK(cpu.loadRom(chip8_demo::Pong2));const auto state=cpu.saveState();
+    CHECK(checksum(state.data(),state.size()-4)==chip8::stateDigest(state));
+}
 }
 int main() {
     const std::vector<std::pair<const char*,void(*)()>> tests{
@@ -230,7 +305,9 @@ int main() {
         {"Presentation clear/scroll/mode reset",presentationResets},{"Presentation XO planes",presentationPlanes},
         {"Presentation exact/forced bypass",presentationBypass},{"Pong/Breakout flicker and state regression",presentationGames},
         {"Bundled ROM smoke",originalGames},{"Two-player Pong input/no AI",pongInput},
-        {"Random ROM/state fuzz",fuzz}
+        {"Random ROM/state fuzz",fuzz},{"Bounded delta timeline/branch/resize",timeline},
+        {"Scheduler phase and breakpoints",phaseAndBreakpoints},{"Checksummed deterministic input replay",inputReplay},
+        {"Settings bundle CRC/paths/atomic rejection",settingsBundle}
     };
     int passed=0;
     for(const auto& test:tests)try {test.second();++passed;std::cout<<"PASS "<<test.first<<"\n";}catch(const std::exception& e) {std::cerr<<"FAIL "<<test.first<<": "<<e.what()<<"\n";return 1;}

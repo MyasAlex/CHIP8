@@ -1,6 +1,7 @@
 #include "Chip8Core.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <iomanip>
 #include <sstream>
@@ -24,11 +25,13 @@ std::string hex(std::uint32_t n, int width = 4) {
     return s.str();
 }
 std::uint32_t crc32(const std::uint8_t* bytes, std::size_t size) {
+    static constexpr auto table=[] {
+        std::array<std::uint32_t,256> result{};
+        for(std::uint32_t n=0;n<256;++n){auto value=n;for(int bit=0;bit<8;++bit)value=(value>>1)^(0xEDB88320u&(0u-(value&1u)));result[n]=value;}
+        return result;
+    }();
     std::uint32_t crc = ~0u;
-    for (std::size_t i = 0; i < size; ++i) {
-        crc ^= bytes[i];
-        for (int b = 0; b < 8; ++b) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
-    }
+    for (std::size_t i = 0; i < size; ++i)crc=(crc>>8)^table[(crc^bytes[i])&255];
     return ~crc;
 }
 }
@@ -495,7 +498,7 @@ void Scheduler::setHz(double hz) {
 void Scheduler::reset() { cpu_left_=1.0/hz_; frame_left_=1.0/60.0; }
 double Scheduler::untilNextEvent() const { return std::min(cpu_left_,frame_left_); }
 void Scheduler::advance(Chip8& cpu, double seconds, const std::function<void()>& onFrame,
-                        const std::function<void()>& onDisplay) {
+                        const std::function<void()>& onDisplay, const std::function<bool()>& beforeInstruction) {
     if(!std::isfinite(seconds) || seconds<=0)return;
     seconds=std::min(seconds,0.05); // discard suspended-host catch-up beyond 50 ms
     constexpr double epsilon=1e-12;
@@ -507,6 +510,7 @@ void Scheduler::advance(Chip8& cpu, double seconds, const std::function<void()>&
         if(frame) { if(!cpu.halted())cpu.tickTimers(); frame_left_+=1.0/60.0; }
         if(cpu_left_<=epsilon) {
             if(!cpu.halted()) {
+                if(beforeInstruction && !beforeInstruction()) { if(frame && onFrame)onFrame();return; }
                 const auto generation=cpu.displayGeneration();
                 cpu.step();
                 if(onDisplay && generation!=cpu.displayGeneration())onDisplay();
@@ -582,5 +586,119 @@ bool Presenter::publish(const Chip8& cpu, bool stabilize, bool force) {
     const bool changed=first || force || width_!=cpu.width() || height_!=cpu.height() || next!=display_;
     display_=next; width_=cpu.width(); height_=cpu.height();
     return changed;
+}
+bool Scheduler::restorePhase(Phase value) {
+    if(!std::isfinite(value.hz)||value.hz<60||value.hz>100000||!std::isfinite(value.cpu)||
+       !std::isfinite(value.frame)||value.cpu < -1e-12||value.frame < -1e-12||
+       value.cpu>1.0/value.hz+1e-12||value.frame>1.0/60.0+1e-12)return false;
+    hz_=value.hz;cpu_left_=std::max(0.0,value.cpu);frame_left_=std::max(0.0,value.frame);return true;
+}
+
+namespace {
+std::vector<std::uint8_t> packRuns(const std::vector<std::uint8_t>& input) {
+    std::vector<std::uint8_t> out;
+    for(std::size_t i=0;i<input.size();) {
+        const bool literal=input[i]!=0;
+        const auto start=i;
+        while(i<input.size()&&(input[i]!=0)==literal&&i-start<128)++i;
+        out.push_back(static_cast<std::uint8_t>((literal?128:0)|(i-start-1)));
+        if(literal)out.insert(out.end(),input.begin()+start,input.begin()+i);
+    }
+    return out;
+}
+bool unpackRuns(const std::vector<std::uint8_t>& input,std::size_t size,std::vector<std::uint8_t>& out) {
+    out.clear();out.reserve(size);
+    for(std::size_t i=0;i<input.size();) {
+        const auto token=input[i++];const std::size_t n=(token&127)+1;
+        if(out.size()+n>size)return false;
+        if(token&128) {
+            if(i+n>input.size())return false;
+            out.insert(out.end(),input.begin()+i,input.begin()+i+n);i+=n;
+        } else out.insert(out.end(),n,0);
+    }
+    return out.size()==size;
+}
+}
+RewindBuffer::RewindBuffer(std::size_t maxBytes,std::uint64_t maxFrames)
+    :max_bytes_(std::max<std::size_t>(1024,maxBytes)),max_frames_(std::max<std::uint64_t>(2,maxFrames)) {}
+void RewindBuffer::clear() {records_.clear();previous_.clear();bytes_=since_key_=0;}
+std::uint64_t RewindBuffer::frame(std::size_t index)const {return index<records_.size()?records_[index].frame:0;}
+bool RewindBuffer::restore(std::size_t index,std::vector<std::uint8_t>& state)const {
+    if(index>=records_.size())return false;
+    auto start=index;
+    while(start&&!records_[start].key)--start;
+    std::vector<std::uint8_t> result,delta;
+    if(!records_[start].key||!unpackRuns(records_[start].data,records_[start].size,result))return false;
+    for(auto i=start+1;i<=index;++i) {
+        if(!unpackRuns(records_[i].data,records_[i].size,delta))return false;
+        if(records_[i].key)result=delta;
+        else {
+            if(result.size()!=delta.size())return false;
+            for(std::size_t n=0;n<result.size();++n)result[n]^=delta[n];
+        }
+    }
+    state.swap(result);return true;
+}
+void RewindBuffer::capture(const std::vector<std::uint8_t>& state,std::uint64_t frame) {
+    if(state.empty()||state.size()>128u*1024u||(!records_.empty()&&frame<=records_.back().frame))return;
+    const bool key=records_.empty()||previous_.size()!=state.size()||since_key_>=29;
+    std::vector<std::uint8_t> raw=state;
+    if(!key)for(std::size_t n=0;n<raw.size();++n)raw[n]^=previous_[n];
+    auto data=packRuns(raw);bytes_+=data.size();
+    records_.push_back({frame,key,state.size(),std::move(data)});
+    previous_=state;since_key_=key?0:since_key_+1;
+    while(!records_.empty()&&(bytes_>max_bytes_||frame-records_.front().frame>max_frames_)) {
+        if(records_.size()==1) {if(bytes_>max_bytes_)clear();break;}
+        std::vector<std::uint8_t> promoted;
+        if(!restore(1,promoted)){clear();break;}
+        auto packed=packRuns(promoted);
+        bytes_-=records_[1].data.size();bytes_+=packed.size();
+        records_[1].data=std::move(packed);records_[1].key=true;
+        bytes_-=records_.front().data.size();records_.pop_front();
+    }
+}
+void RewindBuffer::branch(std::size_t index) {
+    std::vector<std::uint8_t> state;if(!restore(index,state))return;
+    while(records_.size()>index+1) {bytes_-=records_.back().data.size();records_.pop_back();}
+    previous_=std::move(state);since_key_=0;
+    for(std::size_t n=records_.size();n&&!records_[n-1].key;--n)++since_key_;
+}
+std::uint32_t stateDigest(const std::vector<std::uint8_t>& state) {
+    if(state.size()<4)return crc32(state.data(),state.size());
+    std::uint32_t value=0;
+    for(unsigned n=0;n<4;++n)value|=static_cast<std::uint32_t>(state[state.size()-4+n])<<(n*8);
+    return value;
+}
+std::vector<std::uint8_t> Replay::encode()const {
+    if(rom.size()<2||rom.size()>65024||initial.size()<Chip8::MemorySize+Chip8::DisplaySize||
+       initial.size()>Chip8::MemorySize+Chip8::DisplaySize+1024||frames.size()>72000||
+       !std::isfinite(hz)||hz<60||hz>100000)return {};
+    std::vector<std::uint8_t> out{'C','8','R','E','P','L','A','Y',1};
+    auto put=[&](std::uint64_t value,unsigned size){for(unsigned n=0;n<size;++n)out.push_back(static_cast<std::uint8_t>(value>>(8*n)));};
+    put(std::bit_cast<std::uint64_t>(hz),8);put(rom.size(),4);put(initial.size(),4);put(frames.size(),4);
+    out.insert(out.end(),rom.begin(),rom.end());out.insert(out.end(),initial.begin(),initial.end());
+    for(const auto& f:frames){put(f.keys,2);put(f.digest,4);}
+    put(crc32(out.data(),out.size()),4);return out;
+}
+bool Replay::decode(const std::vector<std::uint8_t>& bytes,Replay& out,std::string& error) {
+    error.clear();auto fail=[&](const char* text){error=text;return false;};
+    const std::array<std::uint8_t,9> magic{'C','8','R','E','P','L','A','Y',1};
+    if(bytes.size()<33||bytes.size()>1024u*1024u||!std::equal(magic.begin(),magic.end(),bytes.begin()))return fail("Invalid replay header");
+    const auto end=bytes.size()-4;
+    if(crc32(bytes.data(),end)!=stateDigest(bytes))return fail("Replay checksum mismatch");
+    std::size_t pos=9;
+    auto get=[&](unsigned size){std::uint64_t value=0;for(unsigned n=0;n<size;++n)value|=static_cast<std::uint64_t>(bytes[pos++])<<(8*n);return value;};
+    Replay candidate;candidate.hz=std::bit_cast<double>(get(8));
+    const auto romSize=get(4),stateSize=get(4),count=get(4);
+    if(!std::isfinite(candidate.hz)||candidate.hz<60||candidate.hz>100000||romSize<2||romSize>65024||
+       stateSize<Chip8::MemorySize+Chip8::DisplaySize||stateSize>Chip8::MemorySize+Chip8::DisplaySize+1024||
+       count>72000||pos+romSize+stateSize+count*6!=end)return fail("Invalid replay sizes or timing");
+    candidate.rom.assign(bytes.begin()+pos,bytes.begin()+pos+romSize);pos+=romSize;
+    candidate.initial.assign(bytes.begin()+pos,bytes.begin()+pos+stateSize);pos+=stateSize;
+    Chip8 validation(Config::preset(Profile::XoChip));
+    if(!validation.loadRom(candidate.rom)||!validation.loadState(candidate.initial,error))return false;
+    if(validation.instructionCount()!=0||validation.waitingForKey())return fail("Replay must start from a fresh ROM reset");
+    for(std::uint64_t n=0;n<count;++n)candidate.frames.push_back({static_cast<std::uint16_t>(get(2)),static_cast<std::uint32_t>(get(4))});
+    out=std::move(candidate);return true;
 }
 } // namespace chip8

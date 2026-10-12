@@ -61,6 +61,11 @@ def main():
         ("docs/FIX_FLICKER_RU.md", "docs/FIX_FLICKER_RU.md"),
     ]:
         entries[destination] = (ROOT / source).read_bytes()
+    for directory in [ROOT / "roms/catalog", ROOT / "third_party/chip8-database"]:
+        for source in sorted(directory.rglob("*")):
+            if source.is_file():
+                entries[source.relative_to(ROOT).as_posix()] = source.read_bytes()
+    entries["docs/STUDIO_3_RU.md"] = (ROOT / "docs/STUDIO_3_RU.md").read_bytes()
     hashes = "".join(f"{hashlib.sha256(data).hexdigest()}  {name}\n"
                      for name, data in sorted(entries.items()))
     entries["SHA256SUMS.txt"] = hashes.encode()

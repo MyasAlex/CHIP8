@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -134,17 +135,50 @@ private:
 // polling rate does not change emulation. Long host stalls are bounded.
 class Scheduler {
 public:
+    struct Phase { double hz, cpu, frame; };
     explicit Scheduler(double hz = 700) { setHz(hz); }
     void setHz(double hz);
     double hz() const { return hz_; }
     void reset();
     void advance(Chip8& cpu, double seconds, const std::function<void()>& onFrame = {},
-                 const std::function<void()>& onDisplay = {});
+                 const std::function<void()>& onDisplay = {},
+                 const std::function<bool()>& beforeInstruction = {});
+    Phase phase() const { return {hz_, cpu_left_, frame_left_}; }
+    bool restorePhase(Phase value);
     double untilNextEvent() const;
     double untilNextFrame() const { return frame_left_; }
 private:
     double hz_ = 700, cpu_left_ = 1.0 / 700.0, frame_left_ = 1.0 / 60.0;
 };
+
+// Bounded, lossless timeline. State deltas never alter the emulator snapshot.
+class RewindBuffer {
+public:
+    explicit RewindBuffer(std::size_t maxBytes=64u*1024u*1024u, std::uint64_t maxFrames=7200);
+    void clear();
+    void capture(const std::vector<std::uint8_t>& state, std::uint64_t frame);
+    bool restore(std::size_t index, std::vector<std::uint8_t>& state) const;
+    void branch(std::size_t index);
+    std::size_t size() const { return records_.size(); }
+    std::size_t bytes() const { return bytes_; }
+    std::uint64_t frame(std::size_t index) const;
+private:
+    struct Record { std::uint64_t frame; bool key; std::size_t size; std::vector<std::uint8_t> data; };
+    std::deque<Record> records_;
+    std::vector<std::uint8_t> previous_;
+    std::size_t max_bytes_, bytes_=0, since_key_=0;
+    std::uint64_t max_frames_;
+};
+
+struct ReplayFrame { std::uint16_t keys=0; std::uint32_t digest=0; };
+struct Replay {
+    double hz=700;
+    std::vector<std::uint8_t> rom, initial;
+    std::vector<ReplayFrame> frames;
+    std::vector<std::uint8_t> encode() const;
+    static bool decode(const std::vector<std::uint8_t>& bytes, Replay& out, std::string& error);
+};
+std::uint32_t stateDigest(const std::vector<std::uint8_t>& state);
 
 // Observe every display instruction, then publish immutable snapshots at 60 Hz.
 // In stabilized mode each erased sprite is kept until its matching redraw.
