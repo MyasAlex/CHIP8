@@ -460,6 +460,20 @@ const chip8_catalog::Program* knownProgram(const std::wstring& sha) {
     for(const auto& p:chip8_catalog::Known)if(key==p.sha1)return &p;
     return nullptr;
 }
+std::wstring platformLabel(const char* id) {
+    const std::string name(id);
+    if(name=="chip8"||name=="originalChip8"||name=="modernChip8")return L"CHIP-8";
+    if(name=="schip"||name=="superchip"||name=="superchip1"||name=="superchipModern")return L"Super-CHIP";
+    if(name=="xochip")return L"XO-CHIP";
+    if(name=="chip48")return L"CHIP-48";
+    return wide(name);
+}
+std::wstring localDate(std::uint64_t seconds) {
+    if(!seconds||seconds>(~std::uint64_t{0}-116444736000000000ull)/10000000)return L"ещё не запускали";
+    ULARGE_INTEGER number{};number.QuadPart=seconds*10000000+116444736000000000ull;FILETIME utc{number.LowPart,number.HighPart},local{};SYSTEMTIME time{};
+    if(!FileTimeToLocalFileTime(&utc,&local)||!FileTimeToSystemTime(&local,&time))return L"—";
+    std::wostringstream out;out<<std::setfill(L'0')<<std::setw(2)<<time.wDay<<L'.'<<std::setw(2)<<time.wMonth<<L'.'<<time.wYear<<L' '<<std::setw(2)<<time.wHour<<L':'<<std::setw(2)<<time.wMinute;return out.str();
+}
 void libraryStatistics(LibraryGame& game) {
     const auto section=L"Library."+game.sha;
     game.favorite=GetPrivateProfileIntW(section.c_str(),L"Favorite",0,settings.c_str())!=0;
@@ -480,7 +494,7 @@ void initializeLibrary() {
         auto existing=std::find_if(library.begin(),library.end(),[&](const auto& game){return game.sha==sha;});
         if(existing!=library.end()){existing->cover=assetPath(p.cover);continue;}
         LibraryGame game;game.sha=sha;game.title=wide(p.title);game.authors=wide(p.authors);
-        game.description=wide(p.description);game.platform=wide(p.platform);
+        game.description=wide(p.description);game.platform=platformLabel(p.platform);
         game.path=assetPath(p.path);game.cover=assetPath(p.cover);game.metadata=&p;
         libraryStatistics(game);library.push_back(std::move(game));
     }
@@ -493,7 +507,7 @@ void initializeLibrary() {
         LibraryGame game;game.sha=sha;game.path=entry.path();game.metadata=knownProgram(sha);
         const auto section=L"Library."+sha;
         game.title=readSetting(section.c_str(),L"Title",entry.path().stem().c_str());
-        game.platform=game.metadata?wide(game.metadata->platform):L"Импорт";
+        game.platform=game.metadata?platformLabel(game.metadata->platform):L"Импорт";
         if(game.metadata){game.authors=wide(game.metadata->authors);game.description=wide(game.metadata->description);}
         libraryStatistics(game);library.push_back(std::move(game));
     }
@@ -525,7 +539,7 @@ bool importRom(const fs::path& path) {
     std::error_code ec;fs::create_directories(dataDir/L"roms",ec);
     const auto destination=dataDir/L"roms"/(sha+L".ch8");if(!writeAtomic(destination,bytes))return false;
     LibraryGame game;game.sha=sha;game.path=destination;game.title=path.stem().wstring();game.metadata=knownProgram(sha);
-    if(game.metadata){game.title=wide(game.metadata->title);game.authors=wide(game.metadata->authors);game.description=wide(game.metadata->description);game.platform=wide(game.metadata->platform);}
+    if(game.metadata){game.title=wide(game.metadata->title);game.authors=wide(game.metadata->authors);game.description=wide(game.metadata->description);game.platform=platformLabel(game.metadata->platform);}
     else {
         game.platform=L"Импорт";chip8::Chip8 fingerprint(chip8::Config::preset(chip8::Profile::XoChip));fingerprint.loadRom(bytes);
         const auto id=hex(fingerprint.romHash(),16);
@@ -1038,7 +1052,7 @@ void paint(HDC destination) {
         fill(dc,{0,0,w,ui(106)},0x182334);
         text(dc,L"CHIP-8 STUDIO 3.0",{ui(20),ui(9),ui(250),ui(44)},0xD8F3FF,titleFont);
         text(dc,romName,{ui(265),ui(12),w-ui(20),ui(42)},0xAFC1D5);
-        const std::array<std::wstring,6> labels{L"Библиотека",L"Открыть ROM",paused?L"Продолжить":L"Пауза",L"Перезапуск",L"Слот "+std::to_wstring(slot+1)+L": сохранить",debug?L"Скрыть отладку":L"Отладка"};
+        const std::array<std::wstring,6> labels{L"Библиотека",L"Открыть ROM",paused?L"Продолжить":L"Пауза",L"Перезапуск",L"Сохранить "+std::to_wstring(slot+1),debug?L"Скрыть отладку":L"Отладка"};
         for(int n=0;n<6;++n) {
             const auto rect=buttonRect(n); fill(dc,rect,0x27384E);
             text(dc,labels[n],rect,0xD8E7F5,nullptr,DT_CENTER|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
@@ -1441,7 +1455,7 @@ LRESULT CALLBACK wndProc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
     case WM_CAPTURECHANGED:if(timelineDragging)finishRewind();if(virtualHeld>=0){virtualHeld=-1;updateKeys();}return 0;
     case WM_MOUSEWHEEL:if(showLibrary){libraryPage+=GET_WHEEL_DELTA_WPARAM(wp)<0?1:-1;redraw();}return 0;
     case WM_RBUTTONUP:if(showLibrary){POINT point{static_cast<short>(LOWORD(lp)),static_cast<short>(HIWORD(lp))};for(const auto& tile:libraryTiles)if(PtInRect(&tile.first,point)){const auto& game=library[tile.second];
-        const auto value=game.title+L"\n"+game.authors+L"\nПлатформа: "+game.platform+L"\nSHA-1: "+game.sha+L"\n\n"+game.description;
+        const auto value=game.title+L"\n"+game.authors+L"\nПлатформа: "+game.platform+L"\nПоследний запуск: "+localDate(game.last)+L"\nВремя игры: "+std::to_wstring((game.seconds+(game.sha==currentSha?playFrames/60:0))/60)+L" мин\nSHA-1: "+game.sha+L"\n\n"+game.description;
         modal=true;releaseInput();MessageBoxW(hwnd,value.c_str(),L"О программе / игре",MB_OK|MB_ICONINFORMATION);modal=false;clockReset=true;break;}}return 0;
     case WM_COMMAND:if(LOWORD(wp)==1900&&HIWORD(wp)==EN_CHANGE){const int length=GetWindowTextLengthW(searchEdit);libraryQuery.resize(static_cast<std::size_t>(length)+1);GetWindowTextW(searchEdit,libraryQuery.data(),length+1);libraryQuery.resize(length);rebuildLibrary();redraw();}else command(LOWORD(wp));return 0;
     case WM_DROPFILES: {

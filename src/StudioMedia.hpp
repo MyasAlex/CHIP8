@@ -140,11 +140,11 @@ public:
     }
     bool frame(const std::vector<std::uint32_t>& pixels,const std::array<std::int16_t,1600>& sound) {
         if(!active_||pixels.size()!=512u*256u)return false;
-        std::vector<std::uint32_t> bottomUp(pixels.size());
-        for(int y=0;y<256;++y)std::copy_n(pixels.data()+y*512,512,bottomUp.data()+(255-y)*512);
+        // Keep the PNG/GIF row order. Independent native decoding verifies it;
+        // reversing rows here produces an upside-down sink-writer recording.
         const LONGLONG time=static_cast<LONGLONG>(frames_)*10000000/30;
         const LONGLONG duration=static_cast<LONGLONG>(frames_+1)*10000000/30-time;
-        HRESULT hr=write(video_,bottomUp.data(),static_cast<DWORD>(bottomUp.size()*4),time,duration);
+        HRESULT hr=write(video_,pixels.data(),static_cast<DWORD>(pixels.size()*4),time,duration);
         if(SUCCEEDED(hr))hr=write(audio_,sound.data(),static_cast<DWORD>(sound.size()*2),time,duration);
         if(FAILED(hr)){error_=hr;return false;}++frames_;return true;
     }

@@ -10,9 +10,9 @@
 
 **A portable CHIP-8 emulator for Windows, with an offline game library, rewind and recording.** Download the ZIP, extract the entire archive and open **CHIP8.Emulator.exe**. Visual Studio and additional compiler DLLs are unnecessary for the release package. The current application interface is in Russian; this README and the player guide are available in English.
 
-<p align="center"><img src="docs/media/gameplay.gif" alt="Two-player Pong running in the CHIP-8 Studio core" width="800"></p>
+<p align="center"><img src="docs/media/library.png" alt="Native CHIP-8 Studio 3.0 offline game library" width="1000"></p>
 
-*Actual frames from the emulator core, with scripted paddle input. This preview shows the game display; the desktop application has its own window and menus.*
+*Captured from the native Windows build during its interface checks. The library includes original covers and actual ROM previews.*
 
 ## Start playing
 
