@@ -49,6 +49,14 @@ def main():
     info = manifest()
     exe = args.exe.read_bytes()
     verify_pe(exe)
+    for line in (ROOT / "roms/catalog/classics-files.sha256").read_text().splitlines():
+        expected, name = line.split("  ", 1)
+        original = ROOT / "roms/catalog/classics" / name
+        if hashlib.sha256(original.read_bytes()).hexdigest() != expected:
+            raise ValueError(f"Original classic collection bytes changed: {name}")
+    for program in json.loads((ROOT / "roms/catalog/catalog.json").read_text(encoding="utf-8")):
+        if hashlib.sha256((ROOT / program["path"]).read_bytes()).hexdigest() != program["sha256"]:
+            raise ValueError(f"Catalog ROM bytes changed: {program['title']}")
     entries = {"CHIP8.Emulator.exe": exe}
     for source, destination in [
         ("START_HERE.txt", "START_HERE.txt"),

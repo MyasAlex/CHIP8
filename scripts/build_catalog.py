@@ -110,8 +110,12 @@ def main():
     header += 'inline const std::vector<Program> Known = {\n'+''.join(emit(row) for row in known.values())+'};\n}\n'
     (ROOT/'src/CatalogData.hpp').write_text(header,encoding='utf-8')
     # Verify the complete original collection was retained byte-for-byte.
+    checksums = []
     for original in classics.rglob('*'):
-        if original.is_file():assert original.read_bytes()==(out/'classics'/original.relative_to(classics)).read_bytes()
+        if original.is_file():
+            assert original.read_bytes()==(out/'classics'/original.relative_to(classics)).read_bytes()
+            checksums.append(f"{hashlib.sha256(original.read_bytes()).hexdigest()}  {original.relative_to(classics).as_posix()}\n")
+    (out/'classics-files.sha256').write_text(''.join(sorted(checksums)),encoding='utf-8')
     print(json.dumps(summary))
 
 
