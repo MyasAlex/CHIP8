@@ -48,4 +48,8 @@ PASS Pong/Breakout flicker and state regression
 PASS Bundled ROM smoke
 PASS Two-player Pong input/no AI
 PASS Random ROM/state fuzz
-All 47 test groups passed.
+PASS Bounded delta timeline/branch/resize
+PASS Scheduler phase and breakpoints
+PASS Checksummed deterministic input replay
+PASS Settings bundle CRC/paths/atomic rejection
+All 51 test groups passed.

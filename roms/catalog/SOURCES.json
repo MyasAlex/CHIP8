@@ -1,0 +1,24 @@
+{
+  "community": {
+    "repository": "https://github.com/JohnEarnest/chip8Archive",
+    "commit": "761e3ffc63f43e6a849e80714122feff2afca208",
+    "archive_sha256": "3b3cf96f545ddabf1367dc9383af6970f05bb83a165e555de9e5680f1003d7e3",
+    "license": "CC0-1.0; original upstream README retained",
+    "programs": 104
+  },
+  "classics": {
+    "repository": "https://github.com/kripod/chip8-roms",
+    "commit": "c723a9ed1205a215c5b1e45e994eb54acc243c9e",
+    "archive_sha256": "e3f07577c21af26f50a194c8cfc448011193f4dcbc2cbfa6748c0d961e7e23f1",
+    "license": "Complete collection redistribution in original form; individual notices retained",
+    "additional_unique_programs": 106,
+    "preservation": "Complete repository snapshot copied without changing any file bytes"
+  },
+  "database": {
+    "repository": "https://github.com/chip-8/chip-8-database",
+    "commit": "4b2a2a33f3392d813e8be4c7b955838d0797b425",
+    "archive_sha256": "d00fd3476ba0f08abb8cf12a8c0ac3833eadf7cae9fffe4480cc4e826b7f6a3c",
+    "license": "MIT for code and JSON; descriptions retain their authors' copyrights"
+  },
+  "coverage": "210 unique ROM programs, including games, demos and tests. This is not an exhaustive historical archive. 11 entries require other platforms."
+}

@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.0.0
+
+- Add an offline library of 210 unique ROM programs with original notices/covers, SHA-1 profiles, search, favorites, recent launches, playtime and managed multi-ROM/folder import.
+- Add exact/stable/phosphor modes, optional CRT effects, eight palettes and ROM-provided colors without modifying guest state.
+- Add ten slots per ROM, autosave/resume, last-game startup, bounded delta rewind up to 120 seconds, timeline dragging and continuous Backspace rewind.
+- Add turbo/slow motion, per-ROM keyboard remapping, virtual keypad, local Pong achievements and FPS/process CPU metrics.
+- Add streaming GIF, dynamically loaded H.264/AAC MP4, and reset-based input recording/replay with per-frame checksums.
+- Add breakpoints, HEX memory browsing, bounded instruction trace, register change highlighting, comparison PNG and diagnostic report export.
+- Add validated settings/save/managed-ROM transfer and explicit portable mode.
+- Retain 31 Timendus references and expand to 51 core test groups, all 199 launchable catalog boot checks, independent GIF and native MP4/AAC decoding, and extended Windows smoke checks.
+
+The catalog includes demos/tests, is not a complete historical archive, and marks 11 entries requiring other platforms. CHIP-8X, Super-CHIP Legacy, cycle-level VIP/HP48 and the game editor remain future work.
+
 ## 2.1.0
 
 - Track XOR erasure and redraw per sprite, reducing flicker in classic Pong and Breakout without changing the guest's memory, collision flags or instruction timing.

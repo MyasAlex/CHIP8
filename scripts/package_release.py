@@ -49,6 +49,14 @@ def main():
     info = manifest()
     exe = args.exe.read_bytes()
     verify_pe(exe)
+    for line in (ROOT / "roms/catalog/classics-files.sha256").read_text().splitlines():
+        expected, name = line.split("  ", 1)
+        original = ROOT / "roms/catalog/classics" / name
+        if hashlib.sha256(original.read_bytes()).hexdigest() != expected:
+            raise ValueError(f"Original classic collection bytes changed: {name}")
+    for program in json.loads((ROOT / "roms/catalog/catalog.json").read_text(encoding="utf-8")):
+        if hashlib.sha256((ROOT / program["path"]).read_bytes()).hexdigest() != program["sha256"]:
+            raise ValueError(f"Catalog ROM bytes changed: {program['title']}")
     entries = {"CHIP8.Emulator.exe": exe}
     for source, destination in [
         ("START_HERE.txt", "START_HERE.txt"),
@@ -61,6 +69,11 @@ def main():
         ("docs/FIX_FLICKER_RU.md", "docs/FIX_FLICKER_RU.md"),
     ]:
         entries[destination] = (ROOT / source).read_bytes()
+    for directory in [ROOT / "roms/catalog", ROOT / "third_party/chip8-database"]:
+        for source in sorted(directory.rglob("*")):
+            if source.is_file():
+                entries[source.relative_to(ROOT).as_posix()] = source.read_bytes()
+    entries["docs/STUDIO_3_RU.md"] = (ROOT / "docs/STUDIO_3_RU.md").read_bytes()
     hashes = "".join(f"{hashlib.sha256(data).hexdigest()}  {name}\n"
                      for name, data in sorted(entries.items()))
     entries["SHA256SUMS.txt"] = hashes.encode()
