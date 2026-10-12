@@ -44,7 +44,9 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Configure x64 with static runtime
-        run: cmake -S . -B build -A x64
+        run: |
+          $pythonExe = python -c "import sys; print(sys.executable)"
+          cmake -S . -B build -A x64 "-DPython3_EXECUTABLE=$pythonExe"
       - name: Build Release
         run: cmake --build build --config Release --parallel
       - name: Install independent media decoders for checks

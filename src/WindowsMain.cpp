@@ -1055,7 +1055,7 @@ void paint(HDC destination) {
         else if(!running()&&!cpu.halted())status+=L"   ·   Автопауза";
         if(muted)status+=L"   ·   Без звука";
         text(dc,status,{ui(20),h-ui(75),w-ui(20),h-ui(52)},0x9CBAD2);
-        const auto controls=pongControls?L"Pong: W/S — слева, ↑/↓ — справа. Два игрока, без ИИ.":L"Клавиатура: 1 2 3 4 / Q W E R / A S D F / Z X C V — работает при любой раскладке.";
+        const auto controls=customControls?L"Управление переназначено для этой игры · Эмуляция → Переназначить 16 клавиш":pongControls?L"Pong: W/S — слева, ↑/↓ — справа. Два игрока, без ИИ.":L"Клавиатура: 1 2 3 4 / Q W E R / A S D F / Z X C V · также стрелки и пробел для известных ROM.";
         text(dc,controls,{ui(20),h-ui(53),w-ui(20),h-ui(31)},0xD3E5F3);
         std::wstring help=L"P — пауза  ·  F1 — перезапуск  ·  F5/F8 — сохранить/загрузить  ·  F11 — весь экран";
         if(cpu.halted())help=cpu.error().empty()?L"Программа завершила выполнение (00FD). F1 — начать заново.":wide(cpu.error());
@@ -1460,11 +1460,12 @@ LRESULT CALLBACK wndProc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
 }
 
 bool createWindow(HINSTANCE instance,int show) {
+    using SystemDpi=UINT(WINAPI*)();const auto systemDpi=procedure<SystemDpi>(GetModuleHandleW(L"user32.dll"),"GetDpiForSystem");if(systemDpi)dpi=systemDpi();
     WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.hInstance=instance;wc.lpfnWndProc=wndProc;
     wc.lpszClassName=ClassName;wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);
     wc.hIcon=LoadIconW(instance,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;
     if(!RegisterClassExW(&wc))return false;
-    RECT rect{0,0,1050,710};AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,TRUE,0);
+    RECT rect{0,0,ui(1050),ui(710)};AdjustWindowRectEx(&rect,WS_OVERLAPPEDWINDOW,TRUE,0);
     if(!CreateWindowExW(WS_EX_ACCEPTFILES,ClassName,L"CHIP-8 Studio",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,
         rect.right-rect.left,rect.bottom-rect.top,nullptr,nullptr,instance,nullptr))return false;
     using GetDpi=UINT(WINAPI*)(HWND);
